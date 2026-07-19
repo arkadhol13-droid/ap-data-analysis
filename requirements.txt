@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+xlsxwriter
+statsmodels
+sqlalchemy
+python-dateutil
+pytz
+squarify
+openai
