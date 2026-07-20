@@ -143,18 +143,6 @@ Application will be available at:
 ```text
 http://34.224.99.117:8501
 
-## 🎯 Use Cases
-
-- Business Reporting
-- Sales Analytics
-- Operational Dashboards
-- Data Exploration
-- Data Cleaning Automation
-- Excel Analysis
-- SQL-Based Insights
-
----
-
 ## 👨‍💻 Author
 
 **Arka Dhol**
