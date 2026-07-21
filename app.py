@@ -107,6 +107,11 @@ uploaded_file = st.sidebar.file_uploader(
     type=["csv", "xlsx"]
 )
 
+if admin_page_selected:
+
+    admin_page()
+    st.stop()
+
 if uploaded_file is None:
 
     st.info(
