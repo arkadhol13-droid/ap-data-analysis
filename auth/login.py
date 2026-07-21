@@ -1,5 +1,8 @@
 import streamlit as st
-from auth.users import USERS
+import pandas as pd
+from datetime import datetime
+
+from auth.users import load_users
 
 
 def login():
@@ -20,7 +23,9 @@ def login():
             <div class="login-header">
                 <div class="login-icon">🔐</div>
                 <div class="login-title">Secure Dashboard Login</div>
-                <div class="login-subtitle">Sign in to continue to your dashboard</div>
+                <div class="login-subtitle">
+                    Sign in to continue to your dashboard
+                </div>
             </div>
             """,
             unsafe_allow_html=True
@@ -46,17 +51,45 @@ def login():
 
         if login_btn:
 
+            users = load_users()
+
             if (
-                username in USERS
-                and password == USERS[username]["password"]
+                username in users
+                and password == users[username]["password"]
             ):
 
                 st.session_state.logged_in = True
                 st.session_state.username = username
-                st.session_state.role = USERS[username]["role"]
+                st.session_state.role = users[username]["role"]
+
                 st.query_params["auth"] = "true"
                 st.query_params["user"] = username
-                st.query_params["role"] = USERS[username]["role"]
+                st.query_params["role"] = users[username]["role"]
+
+                try:
+
+                    device = st.context.headers.get(
+                        "User-Agent",
+                        "Unknown Device"
+                    )
+
+                    login_log = pd.DataFrame(
+                        [{
+                            "username": username,
+                            "login_time": datetime.now(),
+                            "device": device
+                        }]
+                    )
+
+                    login_log.to_csv(
+                        "login_history.csv",
+                        mode="a",
+                        header=False,
+                        index=False
+                    )
+
+                except Exception:
+                    pass
 
                 st.success(
                     "Login Successful ✅"
@@ -73,7 +106,8 @@ def login():
         st.markdown(
             """
             <div class="login-footer">
-                © 2026 Data Analysis with A|> | All Rights Reserved
+                © 2026 Data Analysis with A|> |
+                All Rights Reserved
             </div>
             """,
             unsafe_allow_html=True

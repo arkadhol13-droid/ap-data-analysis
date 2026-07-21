@@ -1,2 +1,2 @@
 from .login import login
-from .users import USERS
+from .users import load_users
