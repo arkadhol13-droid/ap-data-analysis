@@ -1,95 +1,155 @@
-# 📊 Data Analysis Dashboard
+# 📊 AP Data Analysis Platform
 
-A modern Streamlit-based Data Analysis Platform designed for data exploration, cleaning, visualization, SQL analysis, and AI-powered insights. The application provides an end-to-end workflow from raw data upload to cleaned datasets and interactive business intelligence dashboards.
+A powerful Streamlit-based data analytics application that enables users to upload datasets, clean data, create pivot tables, build charts, run SQL queries, and generate analytical insights through an intuitive web interface.
+
+## 🚀 Live Demo
+
+https://ap-data-analysis-cjsgeny2huax9pj4u4siqk.streamlit.app/?embed=true
 
 ---
 
-## 🚀 Key Features
+## ✨ Features
 
-### 📂 Data Upload
-- CSV File Support
-- Excel File Support (.xlsx)
-- Instant Dataset Loading
-- Large Dataset Handling
+### 📁 Data Upload
+- Upload CSV and Excel files
+- Automatic data preview
+- Dataset information summary
 
-### 📊 Dashboard
-- Dataset Preview
-- Row & Column Count
-- Missing Value Analysis
-- Data Quality Score
-- Statistical Summary
-- Dynamic Filters
-- Quick Insights
+### 🧹 Data Cleaning
+- Handle missing values
+- Remove duplicates
+- Data type optimization
+- Column filtering
+
+### 📊 Pivot Builder
+- Dynamic pivot table creation
+- Multiple aggregation options:
+  - Sum
+  - Mean
+  - Count
+  - Max
+  - Min
+- Export pivot results to Excel
 
 ### 📈 Chart Builder
-Supports multiple chart types:
-- Bar Chart
-- Line Chart
-- Multi-Line Comparison Chart
-- Scatter Plot
-- Pie Chart
-- Histogram
-- Box Plot
-- Treemap
-
-### 📋 Pivot Builder
-- Dynamic Pivot Tables
-- Aggregation Functions
-- Interactive Analysis
-- Excel Export
-
-### 🛠 Data Cleaning Center
-Manual Cleaning:
-- Mean
-- Median
-- Mode
-- Standard Deviation
-- Quartiles (25%, 50%, 75%)
-- Forward Fill
-- Backward Fill
-
-AI Cleaning:
-- Missing Value Detection
-- Null / None / NaN Handling
-- Negative Value Correction
-- Duplicate Removal
-- Auto Data Type Detection
-- Data Quality Improvement
-
-Additional Features:
-- Undo / Redo
-- Dataset Reset
-- Download Cleaned Dataset
-
-### 🤖 AI Insights
-Ask questions directly from your dataset:
-- Highest Value
-- Lowest Value
-- Average
-- Total Records
-- Dataset Summary
-- Dynamic Column-Based Queries
+- Interactive visualizations
+- Multiple chart types
+- Custom chart configuration
 
 ### 🗄 SQL Studio
-- Run SQL Queries on Uploaded Data
-- SQLite Engine
-- Instant Results
-- Interactive Tables
+- Run SQL queries directly on uploaded datasets
+- Instant query results
+- Data exploration capabilities
+
+### 🤖 AI Insights
+- Automated analytical summaries
+- Dataset intelligence
+- Business insights generation
+
+### 🔐 Authentication
+- Secure login system
+- User access management
 
 ---
 
-## 🏗 Project Structure
+## 🛠 Technology Stack
+
+| Technology | Purpose |
+|------------|----------|
+| Python | Backend Logic |
+| Streamlit | Web Application Framework |
+| Pandas | Data Processing |
+| Plotly | Interactive Charts |
+| SQLite | SQL Query Engine |
+| Docker | Containerization |
+| GitHub | Version Control |
+| Streamlit Community Cloud | Deployment |
+
+---
+
+## 📂 Project Structure
 
 ```text
-data_analysis_app/
-
+AP_Data_Analysis_App/
+│
 ├── app.py
-├── config/
-├── auth/
-├── core/
-├── pages/
-├── services/
-├── assets/
-├── .streamlit/
 ├── requirements.txt
-└── README.md
+├── Dockerfile
+│
+├── app_pages/
+│   ├── dashboard.py
+│   ├── data_cleaning.py
+│   ├── pivot_builder.py
+│   ├── chart_builder.py
+│   ├── sql_studio.py
+│   └── ai_insights.py
+│
+├── auth/
+│   ├── login.py
+│   └── users.py
+│
+├── services/
+│   ├── cleaning_service.py
+│   ├── chart_service.py
+│   └── sql_service.py
+│
+├── core/
+│   └── file_loader.py
+│
+└── assets/
+```
+
+---
+
+## ⚙️ Local Installation
+
+### Clone Repository
+
+```bash
+git clone https://github.com/arkadhol13-droid/ap-data-analysis.git
+cd ap-data-analysis
+```
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Run Application
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## 🐳 Docker Deployment
+
+### Build Docker Image
+
+```bash
+docker build -t ap-analysis .
+```
+
+### Run Container
+
+```bash
+docker run -p 8501:8501 ap-analysis
+```
+
+Application will be available at:
+
+```text
+http://34.224.99.117:8501
+
+## 👨‍💻 Author
+
+**Arka Dhol**
+
+GitHub:
+https://github.com/arkadhol13-droid
+App Link - https://ap-data-analysis-cjsgeny2huax9pj4u4siqk.streamlit.app/?embed=true
+App Credential id-user
+password- user123
+

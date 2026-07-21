@@ -6,3 +6,6 @@ textColor="#FFFFFF"
 
 [server]
 maxUploadSize=10
+
+[client]
+toolbarMode="minimal"
