@@ -1,30 +1,37 @@
 import json
-
+import os
 
 USER_FILE = "auth/users.json"
 
 
 def load_users():
 
-    try:
+    if not os.path.exists(USER_FILE):
 
-        with open(USER_FILE, "r") as f:
-            return json.load(f)
+        default_users = {
+            "admin": {
+                "password": "admin123",
+                "role": "Admin"
+            },
+            "user": {
+                "password": "user123",
+                "role": "User"
+            }
+        }
 
-    except:
+        with open(USER_FILE, "w") as f:
+            json.dump(default_users, f, indent=4)
 
-        return {}
+        return default_users
+
+    with open(USER_FILE, "r") as f:
+        return json.load(f)
 
 
 def save_users(users):
 
     with open(USER_FILE, "w") as f:
-
-        json.dump(
-            users,
-            f,
-            indent=4
-        )
+        json.dump(users, f, indent=4)
 
 
 def change_password(
