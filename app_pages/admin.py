@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
 from auth.users import (
     change_password,
@@ -34,12 +35,59 @@ def admin_page():
                 "login_history.csv"
             )
 
+            if "Login Time" in history.columns:
+
+                now = datetime.now()
+
+                def get_status(login_time):
+
+                    try:
+
+                        login_dt = datetime.strptime(
+                            str(login_time),
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+
+                        diff = now - login_dt
+
+                        mins = int(
+                            diff.total_seconds() / 60
+                        )
+
+                        if mins <= 5:
+
+                            return "🟢 Active Now"
+
+                        elif mins < 60:
+
+                            return f"🟡 {mins} mins ago"
+
+                        elif mins < 1440:
+
+                            hrs = mins // 60
+
+                            return f"🟡 {hrs} hrs ago"
+
+                        else:
+
+                            days = mins // 1440
+
+                            return f"🔴 {days} days ago"
+
+                    except:
+
+                        return "Unknown"
+
+                history["Status"] = history[
+                    "Login Time"
+                ].apply(get_status)
+
             st.dataframe(
                 history,
                 use_container_width=True
             )
 
-        except:
+        except Exception:
 
             st.info(
                 "No login history found."

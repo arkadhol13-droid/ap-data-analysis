@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
 
 from auth.users import load_users
 
@@ -73,20 +74,31 @@ def login():
                         "Unknown Device"
                     )
 
-                    login_log = pd.DataFrame(
+                    login_row = pd.DataFrame(
                         [{
-                            "username": username,
-                            "login_time": datetime.now(),
-                            "device": device
+                            "Username": username,
+                            "Login Time": datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            "Device": device
                         }]
                     )
 
-                    login_log.to_csv(
-                        "login_history.csv",
-                        mode="a",
-                        header=False,
-                        index=False
-                    )
+                    if os.path.exists("login_history.csv"):
+
+                        login_row.to_csv(
+                            "login_history.csv",
+                            mode="a",
+                            header=False,
+                            index=False
+                        )
+
+                    else:
+
+                        login_row.to_csv(
+                            "login_history.csv",
+                            index=False
+                        )
 
                 except Exception:
                     pass
