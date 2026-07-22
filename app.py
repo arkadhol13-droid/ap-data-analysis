@@ -27,6 +27,7 @@ st.set_page_config(
 # THEME
 load_theme()
 render_header()
+st.write("STEP 1")
 
 if st.query_params.get("auth") == "true":
 
@@ -38,6 +39,7 @@ if st.query_params.get("auth") == "true":
 
 # LOGIN
 login()
+st.write("STEP 2")
 
 # SESSION INIT
 if "working_df" not in st.session_state:
@@ -106,6 +108,7 @@ uploaded_file = st.sidebar.file_uploader(
     "📂 Upload CSV / Excel",
     type=["csv", "xlsx"]
 )
+st.write("STEP 3")
 
 if admin_page_selected:
 

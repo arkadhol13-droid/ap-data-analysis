@@ -63,16 +63,9 @@ def login():
                 st.session_state.username = username
                 st.session_state.role = users[username]["role"]
 
-                st.query_params["auth"] = "true"
-                st.query_params["user"] = username
-                st.query_params["role"] = users[username]["role"]
-
                 try:
 
-                    device = st.context.headers.get(
-                        "User-Agent",
-                        "Unknown Device"
-                    )
+                    device = "Streamlit Cloud"
 
                     login_row = pd.DataFrame(
                         [{
