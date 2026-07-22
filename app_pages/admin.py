@@ -25,9 +25,7 @@ def admin_page():
 
     with tab1:
 
-        st.subheader(
-            "User Login History"
-        )
+        st.subheader("User Login History")
 
         try:
 
@@ -35,7 +33,9 @@ def admin_page():
                 "login_history.csv"
             )
 
-            if "Login Time" in history.columns:
+            # LOGIN STATUS
+
+            if "login_time" in history.columns:
 
                 now = datetime.now()
 
@@ -43,9 +43,8 @@ def admin_page():
 
                     try:
 
-                        login_dt = datetime.strptime(
-                            str(login_time),
-                            "%Y-%m-%d %H:%M:%S"
+                        login_dt = pd.to_datetime(
+                            login_time
                         )
 
                         diff = now - login_dt
@@ -60,26 +59,32 @@ def admin_page():
 
                         elif mins < 60:
 
-                            return f"🟡 {mins} mins ago"
+                            return (
+                                f"🟡 {mins} mins ago"
+                            )
 
                         elif mins < 1440:
 
                             hrs = mins // 60
 
-                            return f"🟡 {hrs} hrs ago"
+                            return (
+                                f"🟡 {hrs} hrs ago"
+                            )
 
                         else:
 
                             days = mins // 1440
 
-                            return f"🔴 {days} days ago"
+                            return (
+                                f"🔴 {days} days ago"
+                            )
 
                     except:
 
                         return "Unknown"
 
-                history["Status"] = history[
-                    "Login Time"
+                history["status"] = history[
+                    "login_time"
                 ].apply(get_status)
 
             st.dataframe(
@@ -87,13 +92,13 @@ def admin_page():
                 use_container_width=True
             )
 
-        except Exception:
+        except Exception as e:
 
-            st.info(
-                "No login history found."
+            st.error(
+                f"Error loading history: {e}"
             )
 
-    # CHANGE OWN PASSWORD
+    # CHANGE PASSWORD
 
     with tab2:
 
@@ -146,11 +151,14 @@ def admin_page():
                         "Current password incorrect."
                     )
 
-    # ADMIN RESET USER PASSWORD
+    # RESET USER PASSWORD
 
     with tab3:
 
-        if st.session_state.role == "Admin":
+        if (
+            st.session_state.role
+            == "Admin"
+        ):
 
             st.subheader(
                 "Reset User Password"
