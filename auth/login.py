@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import pytz
 import os
 
 from auth.users import load_users
@@ -65,19 +66,45 @@ def login():
 
                 try:
 
-                    device = "Streamlit Cloud"
+                    ua = st.context.headers.get(
+                        "User-Agent",
+                        ""
+                    )
+
+                    if "Windows" in ua:
+                        device = "💻 Windows PC"
+
+                    elif "Android" in ua:
+                        device = "📱 Android"
+
+                    elif "iPhone" in ua:
+                        device = "📱 iPhone"
+
+                    elif "Mac" in ua:
+                        device = "💻 Mac"
+
+                    else:
+                        device = ua[:100] if ua else "Unknown Device"
+
+                    ist = pytz.timezone(
+                        "Asia/Kolkata"
+                    )
 
                     login_row = pd.DataFrame(
                         [{
                             "Username": username,
-                            "Login Time": datetime.now().strftime(
+                            "Login Time": datetime.now(
+                                ist
+                            ).strftime(
                                 "%Y-%m-%d %H:%M:%S"
                             ),
                             "Device": device
                         }]
                     )
 
-                    if os.path.exists("login_history.csv"):
+                    if os.path.exists(
+                        "login_history.csv"
+                    ):
 
                         login_row.to_csv(
                             "login_history.csv",
