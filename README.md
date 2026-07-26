@@ -1,155 +1,73 @@
 # 📊 AP Data Analysis Platform
 
-A powerful Streamlit-based data analytics application that enables users to upload datasets, clean data, create pivot tables, build charts, run SQL queries, and generate analytical insights through an intuitive web interface.
+A Streamlit-based data analytics app that lets users upload datasets,
+clean data, build pivot tables and charts, run SQL queries, and get
+AI-generated insights — all behind an enterprise-grade authentication
+and role-based access control (RBAC) layer.
+
+---
 
 ## 🚀 Live Demo
 
-https://ap-data-analysis-cjsgeny2huax9pj4u4siqk.streamlit.app/?embed=true
+**App:** https://ap-data-analysis-cjsgeny2huax9pj4u4siqk.streamlit.app/?embed=true
+
+**Demo login (limited "User" role — data analysis features only):**
+
+| Field | Value |
+|---|---|
+| Username | `user` |
+| Password | `<user123>` |
+
+> Admin credentials are kept private (they unlock user management,
+> session control, and audit logs) — available on request, or run your
+> own instance in a few minutes using the setup steps below.
 
 ---
 
 ## ✨ Features
 
-### 📁 Data Upload
-- Upload CSV and Excel files
-- Automatic data preview
-- Dataset information summary
+- **📁 Data Upload** — CSV/Excel upload with automatic preview and dataset summary
+- **🧹 Data Cleaning** — handle missing values, remove duplicates, fix data types
+- **📊 Pivot Builder** — dynamic pivot tables (Sum, Mean, Count, Max, Min) with Excel export
+- **📈 Chart Builder** — interactive visualizations powered by Plotly
+- **🗄 SQL Studio** — run SQL queries directly on your uploaded data, sandboxed to safe read-only `SELECT` statements
+- **🤖 AI Insights** — automated analytical summaries, rate-limited to prevent abuse
 
-### 🧹 Data Cleaning
-- Handle missing values
-- Remove duplicates
-- Data type optimization
-- Column filtering
+---
 
-### 📊 Pivot Builder
-- Dynamic pivot table creation
-- Multiple aggregation options:
-  - Sum
-  - Mean
-  - Count
-  - Max
-  - Min
-- Export pivot results to Excel
+## 🔐 Security Architecture
 
-### 📈 Chart Builder
-- Interactive visualizations
-- Multiple chart types
-- Custom chart configuration
+This app includes a full authentication & authorization subsystem
+designed around the OWASP Top 10 — see [`SECURITY.md`](./SECURITY.md)
+for the full architecture, flow diagrams, and test coverage.
 
-### 🗄 SQL Studio
-- Run SQL queries directly on uploaded datasets
-- Instant query results
-- Data exploration capabilities
-
-### 🤖 AI Insights
-- Automated analytical summaries
-- Dataset intelligence
-- Business insights generation
-
-### 🔐 Authentication
-- Secure login system
-- User access management
+| Capability | Implementation |
+|---|---|
+| Password security | bcrypt hashing + strength policy, auto-migration from legacy plaintext |
+| RBAC | Admin / Manager / User roles, enforced server-side on every request |
+| Session management | Server-side session registry — sessions can be revoked individually or in bulk |
+| Auto logout | Idle sessions expire after 30 minutes automatically |
+| Admin force logout | Admin can log out a single device, selected users, or everyone, instantly |
+| Login protection | 5 failed attempts → 15-minute lockout, generic error messages |
+| Rate limiting | Sliding-window limits on login and AI Insights |
+| Audit logging | Every security event logged; secrets auto-scrubbed before writing |
+| SQL sandboxing | SQL Studio locked to read-only queries, blocks injection/escape attempts |
+| Test coverage | 44 automated unit + integration tests, all passing |
 
 ---
 
 ## 🛠 Technology Stack
 
-| Technology | Purpose |
-|------------|----------|
-| Python | Backend Logic |
-| Streamlit | Web Application Framework |
-| Pandas | Data Processing |
-| Plotly | Interactive Charts |
-| SQLite | SQL Query Engine |
-| Docker | Containerization |
-| GitHub | Version Control |
-| Streamlit Community Cloud | Deployment |
-
----
-
-## 📂 Project Structure
-
-```text
-AP_Data_Analysis_App/
-│
-├── app.py
-├── requirements.txt
-├── Dockerfile
-│
-├── app_pages/
-│   ├── dashboard.py
-│   ├── data_cleaning.py
-│   ├── pivot_builder.py
-│   ├── chart_builder.py
-│   ├── sql_studio.py
-│   └── ai_insights.py
-│
-├── auth/
-│   ├── login.py
-│   └── users.py
-│
-├── services/
-│   ├── cleaning_service.py
-│   ├── chart_service.py
-│   └── sql_service.py
-│
-├── core/
-│   └── file_loader.py
-│
-└── assets/
-```
+Python · Streamlit · Pandas · NumPy · Plotly · SQLite · bcrypt · Docker · pytest
 
 ---
 
 ## ⚙️ Local Installation
 
-### Clone Repository
-
 ```bash
 git clone https://github.com/arkadhol13-droid/ap-data-analysis.git
 cd ap-data-analysis
-```
-
-### Install Dependencies
-
-```bash
 pip install -r requirements.txt
+cp .env.example .env
 ```
-
-### Run Application
-
-```bash
-streamlit run app.py
-```
-
----
-
-## 🐳 Docker Deployment
-
-### Build Docker Image
-
-```bash
-docker build -t ap-analysis .
-```
-
-### Run Container
-
-```bash
-docker run -p 8501:8501 ap-analysis
-```
-
-Application will be available at:
-
-```text
-http://34.224.99.117:8501
-
-## 👨‍💻 Author
-
-**Arka Dhol**
-
-GitHub:
-https://github.com/arkadhol13-droid
-App Link - https://ap-data-analysis-cjsgeny2huax9pj4u4siqk.streamlit.app/?embed=true
-App Credential id-user
-password- user123
-
+GitHub: [github.com/arkadhol13-droid](https://github.com/arkadhol13-droid)
