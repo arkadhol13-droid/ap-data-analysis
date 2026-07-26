@@ -16,7 +16,7 @@ and role-based access control (RBAC) layer.
 | Field | Value |
 |---|---|
 | Username | `user` |
-| Password | `<user123>` |
+| Password | `user123` |
 
 > Admin credentials are kept private (they unlock user management,
 > session control, and audit logs) — available on request, or run your
