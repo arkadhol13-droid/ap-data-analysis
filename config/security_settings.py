@@ -7,11 +7,13 @@ try:
 except ImportError:
     pass
 
+
 def _get_int(name: str, default: int) -> int:
     try:
         return int(os.environ.get(name, default))
     except (TypeError, ValueError):
         return default
+
 
 def _get_bool(name: str, default: bool) -> bool:
     val = os.environ.get(name)
@@ -19,10 +21,14 @@ def _get_bool(name: str, default: bool) -> bool:
         return default
     return val.strip().lower() in ("1", "true", "yes", "on")
 
+# Secrets 
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "dev-only-change-me")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 BOOTSTRAP_ADMIN_USERNAME = os.environ.get("BOOTSTRAP_ADMIN_USERNAME", "admin")
 BOOTSTRAP_ADMIN_PASSWORD = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD", "")
+BOOTSTRAP_USER_USERNAME = os.environ.get("BOOTSTRAP_USER_USERNAME", "user")
+BOOTSTRAP_USER_PASSWORD = os.environ.get("BOOTSTRAP_USER_PASSWORD", "")
+BOOTSTRAP_USER_ROLE = os.environ.get("BOOTSTRAP_USER_ROLE", "User")
 # Storage locations
 DATA_DIR = os.environ.get("APP_DATA_DIR", os.path.join(os.getcwd(), "data"))
 SECURITY_DB_PATH = os.path.join(DATA_DIR, "security.db")
