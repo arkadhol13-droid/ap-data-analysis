@@ -3,15 +3,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+from config.security_settings import (
+    AI_INSIGHTS_RATE_LIMIT,
+    AI_INSIGHTS_RATE_WINDOW_SECONDS,
+)
+from security.rate_limiter import enforce_rate_limit
+from security.validators import sanitize_text_input
 
-# ----------------------------------------------------------------------
-# Helper: safely pull the CLEANED dataframe.
-#
-# If your Data Cleaning page saves the cleaned df somewhere in
-# st.session_state, this will find it automatically by checking a list
-# of common key names. If you know your exact key name, just add it to
-# CLEANED_DF_KEYS below (put it first for priority).
-# ----------------------------------------------------------------------
 CLEANED_DF_KEYS = [
     "cleaned_df",
     "clean_df",
@@ -22,13 +20,7 @@ CLEANED_DF_KEYS = [
     "df",
     "data",
 ]
-
-
 def get_cleaned_df(fallback_df):
-    """
-    Returns the cleaned dataframe from session_state if available,
-    otherwise falls back to whatever df was passed into ai_page().
-    """
     for key in CLEANED_DF_KEYS:
         if key in st.session_state:
             candidate = st.session_state[key]
@@ -36,29 +28,7 @@ def get_cleaned_df(fallback_df):
                 return candidate
 
     return fallback_df
-
-
 def safe_to_numeric(series, clip_outliers=True, outlier_z=6):
-    """
-    Robust numeric conversion for messy real-world columns.
-
-    Fixes the "inf" bug at THREE layers:
-
-    1. TEXT LEVEL: pandas' to_numeric will happily parse the literal
-       text "inf" / "infinity" / "-inf" as REAL infinity, not as a
-       missing value. So we explicitly blank out any such tokens
-       (case-insensitive) before conversion.
-    2. POST-CONVERSION: any +inf / -inf that still slips through
-       (e.g. was already stored as a float inf in the dataframe) gets
-       replaced with NaN.
-    3. OVERFLOW / CORRUPT-DATA GUARD: if the "cleaned" data has a few
-       insanely large corrupt values (e.g. a stray 1e300 from a bad
-       fillna/calculation upstream), sum()/mean() can silently overflow
-       to inf even with no literal inf values. We optionally drop values
-       that are extreme outliers (z-score based) before aggregating.
-    """
-
-    # Layer 1: neutralize text tokens that mean "not a real number"
     bad_tokens = r"(?i)^\s*(inf|-inf|\+inf|infinity|-infinity|nan|none|null|na|n/a)\s*$"
 
     cleaned = (
@@ -66,13 +36,8 @@ def safe_to_numeric(series, clip_outliers=True, outlier_z=6):
         .str.replace(r"[₹$,%\s]", "", regex=True)
     )
     cleaned = cleaned.mask(cleaned.str.match(bad_tokens, na=False), np.nan)
-
     numeric = pd.to_numeric(cleaned, errors="coerce")
-
-    # Layer 2: kill any inf / -inf so they never leak into aggregations
     numeric = numeric.replace([np.inf, -np.inf], np.nan)
-
-    # Layer 3: guard against overflow from extreme corrupt values
     if clip_outliers and numeric.notna().sum() > 1:
         mean = numeric.mean()
         std = numeric.std()
@@ -81,7 +46,6 @@ def safe_to_numeric(series, clip_outliers=True, outlier_z=6):
             numeric = numeric.where(z_scores <= outlier_z, np.nan)
 
     return numeric
-
 
 def find_matched_column(q, df):
     """
@@ -118,12 +82,9 @@ def find_matched_column(q, df):
 
     return None
 
-
 def ai_page(df):
 
     st.subheader("💬 Ask Your Data")
-
-    # Always operate on the CLEANED dataset, not the raw upload
     df = get_cleaned_df(df)
 
     st.info("""
@@ -139,12 +100,31 @@ def ai_page(df):
     • Top Category
     """)
 
-    question = st.text_input(
+    question_raw = st.text_input(
         "Ask anything about your cleaned dataset"
     )
 
-    if not question:
+    if not question_raw:
         return
+    username = st.session_state.get("username", "anonymous")
+    rl = enforce_rate_limit(
+        "ai_insights",
+        username,
+        AI_INSIGHTS_RATE_LIMIT,
+        AI_INSIGHTS_RATE_WINDOW_SECONDS,
+    )
+
+    if not rl.allowed:
+        st.error(
+            f"🚦 Rate limit exceeded: max {AI_INSIGHTS_RATE_LIMIT} AI Insights "
+            f"requests per {AI_INSIGHTS_RATE_WINDOW_SECONDS} seconds. "
+            f"Please retry in {rl.retry_after_seconds} second(s)."
+        )
+        return
+
+    st.caption(f"AI Insights requests remaining this minute: {rl.remaining}")
+
+    question = sanitize_text_input(question_raw, max_length=300)
 
     q = question.lower()
 

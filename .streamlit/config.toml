@@ -6,6 +6,21 @@ textColor="#FFFFFF"
 
 [server]
 maxUploadSize=10
+# CSRF protection built into Streamlit's websocket protocol -- keep enabled.
+# NOTE: Streamlit requires enableCORS=true whenever enableXsrfProtection is
+# true (it needs to know allowable origins to set the CSRF cookie safely).
+# We keep XSRF protection on and rely on the reverse proxy
+# (nginx/security-headers.conf) to restrict which origins may actually
+# reach this app, rather than turning XSRF off to force CORS off here.
+enableXsrfProtection=true
+enableCORS=true
+# Do not expose detailed Streamlit internals/tracebacks to the browser.
+enableStaticServing=false
 
 [client]
 toolbarMode="minimal"
+# Never show full Python tracebacks to end users -- generic error only.
+showErrorDetails=false
+
+[browser]
+gatherUsageStats=false

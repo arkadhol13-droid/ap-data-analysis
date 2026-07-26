@@ -10,3 +10,6 @@ python-dateutil
 pytz
 squarify
 openai
+bcrypt
+streamlit-autorefresh
+python-dotenv
