@@ -1,33 +1,3 @@
-"""
-Server-side session registry.
-
-This is the piece that makes two of your must-have features possible
-in a Streamlit app:
-
-1. "Admin can log out a specific user / multiple users / all users,
-    immediately, on ANY device they're logged in on"
-   -> Every browser tab/device that logs in gets its own row in the
-      shared `sessions` table (not just something in that tab's local
-      st.session_state, which no other tab or the admin could see or
-      touch). Revoking a row here is instantly visible to that tab the
-      next time it reruns (every user click, or the periodic
-      auto-refresh tick, triggers a rerun).
-
-2. "Auto logout after 30 minutes of inactivity"
-   -> Every rerun updates `last_activity` for that session id. Before
-      rendering any protected page we check
-      now - last_activity > IDLE_TIMEOUT_MINUTES and force logout if so.
-      A lightweight client-side auto-refresh (see app.py) makes sure a
-      rerun happens periodically even if the user just leaves the tab
-      open without clicking anything, so idle sessions actually get
-      caught instead of only being checked on next interaction.
-
-Session identifiers are generated with `secrets.token_urlsafe`
-(cryptographically secure, unguessable) and stored server-side only in
-`st.session_state` for the current tab plus this shared table -- never
-in a cookie or URL the user/JS can read or forge, and never exposed to
-the frontend outside of Streamlit's own encrypted session state.
-"""
 
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -36,12 +6,8 @@ from config.security_settings import IDLE_TIMEOUT_MINUTES
 from security.db import get_conn, init_db
 
 init_db()
-
-
 def _now():
     return datetime.now(timezone.utc)
-
-
 def create_session(username: str, role: str, device: str = "", ip_address: str = "") -> str:
     session_id = secrets.token_urlsafe(32)
     now = _now().isoformat()
@@ -53,8 +19,6 @@ def create_session(username: str, role: str, device: str = "", ip_address: str =
             (session_id, username, role, now, now, device, ip_address),
         )
     return session_id
-
-
 def touch_session(session_id: str):
     """Updates last_activity -- call this on every rerun of an authenticated page."""
     with get_conn() as conn:
@@ -62,23 +26,17 @@ def touch_session(session_id: str):
             "UPDATE sessions SET last_activity = ? WHERE session_id = ? AND revoked = 0",
             (_now().isoformat(), session_id),
         )
-
-
 def get_session(session_id: str):
     with get_conn() as conn:
         row = conn.execute(
             "SELECT * FROM sessions WHERE session_id = ?", (session_id,)
         ).fetchone()
     return dict(row) if row else None
-
-
 class SessionStatus:
     VALID = "VALID"
     NOT_FOUND = "NOT_FOUND"
     REVOKED = "REVOKED"
     IDLE_TIMEOUT = "IDLE_TIMEOUT"
-
-
 def validate_session(session_id: str) -> str:
     """
     Returns one of SessionStatus.* Does NOT mutate state -- callers decide

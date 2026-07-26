@@ -1,35 +1,16 @@
-"""
-Sliding-window rate limiter backed by SQLite so limits are enforced
-across the whole server (all Streamlit sessions), not per-tab.
-
-`check_rate_limit(bucket, identifier, limit, window_seconds)` returns
-an object describing whether the caller is allowed, and if not, how
-many seconds until they should retry -- the Streamlit-native
-equivalent of an HTTP 429 + `Retry-After` header (Streamlit has no
-per-request HTTP response layer for a page render, so we surface this
-as a blocking UI message with a live countdown instead).
-"""
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-
 from security.db import get_conn, init_db
 from security.audit import log_event, EVENT_RATE_LIMIT_VIOLATION
-
 init_db()
-
-
 def _now():
     return datetime.now(timezone.utc)
-
-
 @dataclass
 class RateLimitResult:
     allowed: bool
     remaining: int
     retry_after_seconds: int
-
-
 def check_rate_limit(bucket: str, identifier: str, limit: int, window_seconds: int) -> RateLimitResult:
     """
     Checks (without recording) whether `identifier` has capacity left in
@@ -60,23 +41,17 @@ def check_rate_limit(bucket: str, identifier: str, limit: int, window_seconds: i
         details={"bucket": bucket, "limit": limit, "window_seconds": window_seconds},
     )
     return RateLimitResult(allowed=False, remaining=0, retry_after_seconds=retry_after)
-
-
 def record_request(bucket: str, identifier: str):
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO rate_limit_events (bucket, identifier, occurred_at) VALUES (?, ?, ?)",
             (bucket, identifier, _now().isoformat()),
         )
-        # Housekeeping: drop events older than 1 hour for this bucket/identifier
-        # so the table doesn't grow unbounded.
         cutoff = (_now() - timedelta(hours=1)).isoformat()
         conn.execute(
             "DELETE FROM rate_limit_events WHERE bucket = ? AND identifier = ? AND occurred_at < ?",
             (bucket, identifier, cutoff),
         )
-
-
 def enforce_rate_limit(bucket: str, identifier: str, limit: int, window_seconds: int) -> RateLimitResult:
     """Checks AND records in one call -- use this at the point of actual use."""
     result = check_rate_limit(bucket, identifier, limit, window_seconds)

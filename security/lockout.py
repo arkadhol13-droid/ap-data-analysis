@@ -1,21 +1,3 @@
-"""
-Login lockout protection.
-
-Locks an identifier (we use `username` -- optionally combine with IP,
-see note below) for LOCKOUT_WINDOW_MINUTES after
-MAX_FAILED_LOGIN_ATTEMPTS consecutive failures. A successful login
-resets the counter immediately.
-
-Note on identifier choice: locking by username alone prevents a
-targeted account-takeover brute force. Locking by IP alone is
-trivially bypassed with rotating IPs and can be used to lock out
-legitimate users behind a shared corporate NAT (denial of service).
-This module locks by username, and separately the rate limiter
-(security/rate_limiter.py) throttles the login endpoint per-IP to
-blunt distributed credential-stuffing sweeps. Using both together is
-the standard mitigation recommended by OWASP's
-Credential-Stuffing/Brute-Force cheat sheets.
-"""
 
 from datetime import datetime, timedelta, timezone
 
@@ -24,14 +6,9 @@ from config.security_settings import (
     MAX_FAILED_LOGIN_ATTEMPTS,
 )
 from security.db import get_conn, init_db
-
 init_db()
-
-
 def _now():
     return datetime.now(timezone.utc)
-
-
 def record_attempt(identifier: str, success: bool):
     with get_conn() as conn:
         conn.execute(
@@ -40,19 +17,11 @@ def record_attempt(identifier: str, success: bool):
             (identifier.lower(), _now().isoformat(), 1 if success else 0),
         )
         if success:
-            # Successful login: clear prior failures for this identifier so
-            # they don't carry over and cause a surprise lockout later.
             conn.execute(
                 "DELETE FROM login_attempts WHERE identifier = ? AND success = 0",
                 (identifier.lower(),),
             )
-
-
 def is_locked_out(identifier: str) -> tuple[bool, int]:
-    """
-    Returns (locked, seconds_remaining). Only consecutive failures within
-    the lockout window since the last success count toward the lockout.
-    """
     window_start = (_now() - timedelta(minutes=LOCKOUT_WINDOW_MINUTES)).isoformat()
 
     with get_conn() as conn:
@@ -81,8 +50,6 @@ def is_locked_out(identifier: str) -> tuple[bool, int]:
             return True, int(remaining)
 
     return False, 0
-
-
 def failed_attempt_count(identifier: str) -> int:
     window_start = (_now() - timedelta(minutes=LOCKOUT_WINDOW_MINUTES)).isoformat()
     with get_conn() as conn:

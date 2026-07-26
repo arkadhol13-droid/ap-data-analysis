@@ -1,35 +1,13 @@
-"""
-Security data store.
-
-Why SQLite instead of st.session_state for security data:
-Streamlit's `st.session_state` is scoped to a single browser session
-(one tab/connection) on the server process. Login-attempt counters,
-active sessions, rate limits, and audit logs must be visible to EVERY
-session on the server (e.g. so an admin's "force logout" in tab A is
-enforced the next time the target user's browser reruns in tab B).
-SQLite gives us that shared, server-side, tamper-proof store without
-adding external infra.
-
-All statements below use parameterized queries exclusively -- never
-f-string / % interpolation of user input into SQL -- to eliminate SQL
-injection risk in this module.
-"""
 
 import os
 import sqlite3
 import threading
 from contextlib import contextmanager
-
 from config.security_settings import DATA_DIR, SECURITY_DB_PATH
-
 _lock = threading.Lock()
 _initialized = False
-
-
 def _ensure_dir():
     os.makedirs(DATA_DIR, exist_ok=True)
-
-
 @contextmanager
 def get_conn():
     """Yields a SQLite connection with sane defaults, always closed after use."""
@@ -42,8 +20,6 @@ def get_conn():
         yield conn
     finally:
         conn.close()
-
-
 def init_db():
     """Creates all required tables if they do not already exist. Idempotent."""
     global _initialized

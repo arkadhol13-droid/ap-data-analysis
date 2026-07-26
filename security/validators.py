@@ -1,17 +1,3 @@
-"""
-Backend input validation & sanitization.
-
-Zod/Joi/Yup are JavaScript schema validators and don't apply to this
-Python/Streamlit backend. The equivalent here is a small set of
-explicit, server-side validators applied to every field before it
-touches any query, filesystem path, or shell -- the same principle
-(reject/normalize untrusted input at the boundary, on the server,
-never trust the client) implemented in Python.
-
-Nothing in this module ever trusts data that came from the browser,
-including anything read from st.query_params or file names, which are
-attacker-controlled.
-"""
 
 import re
 import unicodedata
@@ -25,16 +11,12 @@ _SQL_FORBIDDEN_KEYWORDS = re.compile(
     r"(?i)\b(ATTACH|DETACH|PRAGMA|DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|"
     r"REPLACE|VACUUM|REINDEX|EXEC|EXECUTE)\b"
 )
-
-
 def validate_username(username: str) -> tuple[bool, str]:
     if not username:
         return False, "Username is required."
     if not USERNAME_RE.match(username):
         return False, "Username must be 3-32 characters: letters, numbers, _ . -"
     return True, ""
-
-
 def sanitize_text_input(value: str, max_length: int = 500) -> str:
     """
     Generic sanitizer for free-text fields (e.g. AI Insights question box).
@@ -52,8 +34,6 @@ def sanitize_text_input(value: str, max_length: int = 500) -> str:
     value = unicodedata.normalize("NFKC", str(value))
     value = "".join(ch for ch in value if ch.isprintable() or ch in ("\n", "\t"))
     return value[:max_length].strip()
-
-
 def is_safe_sql_select(query: str) -> tuple[bool, str]:
     """
     Sandboxes the SQL Studio feature: only a single, read-only SELECT
@@ -76,8 +56,6 @@ def is_safe_sql_select(query: str) -> tuple[bool, str]:
         return False, "Query contains a keyword that is not permitted in read-only mode."
 
     return True, ""
-
-
 def validate_uploaded_filename(filename: str, allowed_extensions=(".csv", ".xlsx")) -> tuple[bool, str]:
     """
     Defends against path traversal / unexpected file types even though

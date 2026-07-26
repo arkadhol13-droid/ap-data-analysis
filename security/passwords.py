@@ -1,22 +1,10 @@
-"""
-Password hashing.
-
-Never store or compare plaintext passwords. bcrypt includes a random
-salt per password and is deliberately slow (adaptive work factor),
-which is what you want against offline brute force / rainbow tables.
-"""
 
 import bcrypt
-
 from config.security_settings import MIN_PASSWORD_LENGTH
-
-
 def hash_password(plain_password: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
     hashed = bcrypt.hashpw(plain_password.encode("utf-8"), salt)
     return hashed.decode("utf-8")
-
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not plain_password or not hashed_password:
         return False
@@ -26,16 +14,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
             hashed_password.encode("utf-8"),
         )
     except ValueError:
-        # hashed_password wasn't a valid bcrypt hash (e.g. legacy plaintext
-        # record that hasn't been migrated yet) -- treat as no match.
         return False
-
-
 def is_bcrypt_hash(value: str) -> bool:
     """Detects legacy plaintext passwords so we can auto-migrate them."""
     return isinstance(value, str) and value.startswith(("$2a$", "$2b$", "$2y$"))
-
-
 def validate_password_strength(password: str) -> tuple[bool, str]:
     """
     Server-side password policy check. Returns (is_valid, error_message).
