@@ -32,10 +32,44 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+def _defeat_browser_back_cache():
+    """
+    Browsers (Chrome especially) can serve the *previous* page instantly
+    from an in-memory snapshot ("bfcache") when the user hits Back/Forward,
+    instead of doing a fresh round-trip to the server. For a normal static
+    site that's harmless; for this app it means a logged-out (or
+    admin-force-logged-out) user could hit Back and briefly see the last
+    rendered dashboard/data screen from before they were logged out --
+    stale, cached UI, not an actual live session.
+    This injects a `pageshow` listener that detects a bfcache restore
+    (`event.persisted`) and immediately forces a real reload, so Back/
+    Forward always re-runs the server-side session check in app.py rather
+    than showing a frozen snapshot. Streamlit's own server cannot set the
+    Cache-Control HTTP header needed to fully prevent this at the browser
+    level (see nginx/security-headers.conf for that at the reverse-proxy
+    layer) -- this is the client-side backstop that works regardless of
+    hosting platform, including Streamlit Community Cloud.
+    """
+    st.markdown(
+        """
+        <script>
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+_defeat_browser_back_cache()
+
 # THEME
 load_theme()
 render_header()
-# LOGIN 
 login()
 session_id = st.session_state.get("session_id")
 status = validate_session(session_id)
@@ -43,6 +77,7 @@ status = validate_session(session_id)
 if status == SessionStatus.REVOKED:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+    st.query_params.clear()
     st.error(
         "🔒 You have been logged out by an administrator, or this session "
         "is no longer valid. Please log in again."
@@ -58,6 +93,7 @@ elif status == SessionStatus.IDLE_TIMEOUT:
     revoke_session(session_id, reason="idle_timeout")
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+    st.query_params.clear()
     st.warning(
         f"⏱️ You were logged out after {IDLE_TIMEOUT_MINUTES} minutes of "
         f"inactivity. Please log in again."
@@ -67,12 +103,15 @@ elif status == SessionStatus.IDLE_TIMEOUT:
 elif status == SessionStatus.NOT_FOUND:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+    st.query_params.clear()
     st.error("🔒 Session not found. Please log in again.")
     st.stop()
+
+# status == VALID: refresh last-activity timestamp for this rerun.
 touch_session(session_id)
 st_autorefresh(interval=SESSION_AUTOREFRESH_MS, key="idle_watchdog")
 
-# SESSION INIT
+# SESSION INIT 
 if "working_df" not in st.session_state:
     st.session_state.working_df = None
 
@@ -104,8 +143,6 @@ else:
     st.sidebar.info("User Access Enabled 👤")
 
 st.sidebar.caption(f"Auto logout after {IDLE_TIMEOUT_MINUTES} minutes of inactivity.")
-
-# ADMIN PANEL
 admin_page_selected = False
 
 if st.session_state.role == "Admin":
@@ -147,8 +184,6 @@ if not valid_name:
 try:
     df = load_file(uploaded_file)
 except Exception:
-    # Generic error only -- never leak stack traces / library internals
-    # (parser errors can reveal file-system paths or library versions).
     st.error("File Loading Error: the uploaded file could not be read. "
               "Please check the file format and try again.")
     st.stop()
