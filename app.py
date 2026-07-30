@@ -74,7 +74,6 @@ def _force_fresh_check_on_foreground():
         unsafe_allow_html=True,
     )
 
-
 _force_fresh_check_on_foreground()
 
 # THEME
@@ -124,6 +123,7 @@ elif status == SessionStatus.NOT_FOUND:
     )
     st.rerun()
 
+# status == VALID: refresh last-activity timestamp for this rerun.
 touch_session(session_id)
 
 st_autorefresh(interval=SESSION_AUTOREFRESH_MS, key="idle_watchdog")
