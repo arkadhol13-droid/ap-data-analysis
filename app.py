@@ -33,45 +33,56 @@ st.set_page_config(
 )
 
 
-def _defeat_browser_back_cache():
+def _force_fresh_check_on_foreground():
     """
-    Browsers (Chrome especially) can serve the *previous* page instantly
-    from an in-memory snapshot ("bfcache") when the user hits Back/Forward,
-    instead of doing a fresh round-trip to the server. For a normal static
-    site that's harmless; for this app it means a logged-out (or
-    admin-force-logged-out) user could hit Back and briefly see the last
-    rendered dashboard/data screen from before they were logged out --
-    stale, cached UI, not an actual live session.
-    This injects a `pageshow` listener that detects a bfcache restore
-    (`event.persisted`) and immediately forces a real reload, so Back/
-    Forward always re-runs the server-side session check in app.py rather
-    than showing a frozen snapshot. Streamlit's own server cannot set the
-    Cache-Control HTTP header needed to fully prevent this at the browser
-    level (see nginx/security-headers.conf for that at the reverse-proxy
-    layer) -- this is the client-side backstop that works regardless of
-    hosting platform, including Streamlit Community Cloud.
+    Forces a real, full page reload -- not just a Streamlit in-place
+    rerun -- whenever this tab comes back into view. This covers two
+    related problems:
+
+    1. Browser back/forward cache (bfcache): Chrome/Safari can restore a
+       frozen snapshot of the previous page instead of talking to the
+       server again.
+    2. Mobile background throttling: when a phone's screen locks or the
+       browser tab is backgrounded, mobile browsers pause/throttle JS
+       timers (including the periodic st_autorefresh tick below) to save
+       battery. That means an admin's "force logout" -- which only takes
+       visible effect on the target's next script rerun -- can sit
+       undetected for a long time on a phone that's just sitting locked,
+       because the timer that would normally catch it never fires while
+       backgrounded.
+
+    Listening for `visibilitychange`/`focus` and forcing a hard reload
+    the moment the tab/app becomes visible again means the session check
+    in app.py always runs immediately when someone looks at their phone
+    again, instead of waiting on a timer that may have been paused.
     """
     st.markdown(
         """
         <script>
+        function __forceFreshCheck() {
+            window.location.reload();
+        }
         window.addEventListener('pageshow', function (event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
+            if (event.persisted) { __forceFreshCheck(); }
         });
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') { __forceFreshCheck(); }
+        });
+        window.addEventListener('focus', __forceFreshCheck);
         </script>
         """,
         unsafe_allow_html=True,
     )
 
 
-_defeat_browser_back_cache()
+_force_fresh_check_on_foreground()
 
 # THEME
 load_theme()
 render_header()
 
 login()
+
 session_id = st.session_state.get("session_id")
 status = validate_session(session_id)
 
@@ -112,9 +123,12 @@ elif status == SessionStatus.NOT_FOUND:
         "🔒 Session not found. Please log in again.",
     )
     st.rerun()
+
 touch_session(session_id)
+
 st_autorefresh(interval=SESSION_AUTOREFRESH_MS, key="idle_watchdog")
 
+# SESSION INIT (app-level working state, unrelated to auth)
 if "working_df" not in st.session_state:
     st.session_state.working_df = None
 
@@ -146,6 +160,7 @@ else:
     st.sidebar.info("User Access Enabled 👤")
 
 st.sidebar.caption(f"Auto logout after {IDLE_TIMEOUT_MINUTES} minutes of inactivity.")
+
 admin_page_selected = False
 
 if st.session_state.role == "Admin":
@@ -178,6 +193,7 @@ if admin_page_selected:
 if uploaded_file is None:
     st.info("📂 Please upload a CSV or Excel file to continue.")
     st.stop()
+
 valid_name, name_error = validate_uploaded_filename(uploaded_file.name)
 if not valid_name:
     st.error(f"Upload rejected: {name_error}")
