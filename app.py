@@ -70,6 +70,7 @@ _defeat_browser_back_cache()
 # THEME
 load_theme()
 render_header()
+
 login()
 session_id = st.session_state.get("session_id")
 status = validate_session(session_id)
@@ -78,11 +79,12 @@ if status == SessionStatus.REVOKED:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.query_params.clear()
-    st.error(
+    st.session_state["logout_notice"] = (
+        "error",
         "🔒 You have been logged out by an administrator, or this session "
-        "is no longer valid. Please log in again."
+        "is no longer valid. Please log in again.",
     )
-    st.stop()
+    st.rerun()
 
 elif status == SessionStatus.IDLE_TIMEOUT:
     log_event(
@@ -94,24 +96,25 @@ elif status == SessionStatus.IDLE_TIMEOUT:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.query_params.clear()
-    st.warning(
+    st.session_state["logout_notice"] = (
+        "warning",
         f"⏱️ You were logged out after {IDLE_TIMEOUT_MINUTES} minutes of "
-        f"inactivity. Please log in again."
+        f"inactivity. Please log in again.",
     )
-    st.stop()
+    st.rerun()
 
 elif status == SessionStatus.NOT_FOUND:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.query_params.clear()
-    st.error("🔒 Session not found. Please log in again.")
-    st.stop()
-
-# status == VALID: refresh last-activity timestamp for this rerun.
+    st.session_state["logout_notice"] = (
+        "error",
+        "🔒 Session not found. Please log in again.",
+    )
+    st.rerun()
 touch_session(session_id)
 st_autorefresh(interval=SESSION_AUTOREFRESH_MS, key="idle_watchdog")
 
-# SESSION INIT 
 if "working_df" not in st.session_state:
     st.session_state.working_df = None
 

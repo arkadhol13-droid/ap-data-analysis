@@ -72,6 +72,11 @@ def login():
             unsafe_allow_html=True,
         )
 
+        logout_notice = st.session_state.pop("logout_notice", None)
+        if logout_notice:
+            level, message = logout_notice
+            getattr(st, level, st.info)(message)
+
         username_raw = st.text_input(
             "Username",
             placeholder="Enter username",
@@ -90,6 +95,7 @@ def login():
         login_btn = st.button("Login", use_container_width=True)
 
         if login_btn:
+            # Server-side sanitization -- never trust the raw client input.
             username = sanitize_text_input(username_raw, max_length=32)
             client_ip = _client_ip()
             rl = enforce_rate_limit(
@@ -105,6 +111,7 @@ def login():
             if not username:
                 st.error("Invalid username or password.")
                 st.stop()
+
             locked, remaining = is_locked_out(username)
             if locked:
                 minutes = max(remaining // 60, 1)
