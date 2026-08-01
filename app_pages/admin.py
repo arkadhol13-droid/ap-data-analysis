@@ -75,9 +75,7 @@ def admin_page():
             "🚨 Session Control",
         ]
     )
-
     # TAB 1 — LOGIN HISTORY 
-
     with tab1:
         st.subheader("Login History")
 
@@ -101,7 +99,7 @@ def admin_page():
             )
             st.dataframe(
                 df[["Time (IST)", "When", "Event", "Username", "Details"]],
-                use_container_width=True,
+                width='stretch',
             )
         else:
             st.info("No login history yet.")
@@ -249,7 +247,7 @@ def admin_page():
             if selected_event != "All":
                 df = df[df["Event"] == selected_event]
 
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No audit events recorded yet.")
 
@@ -312,6 +310,6 @@ def admin_page():
             df = df.rename(
                 columns={"created_at": "Created (IST)", "last_activity": "Last Activity (IST)"}
             )
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No session history yet.")

@@ -74,12 +74,14 @@ def _force_fresh_check_on_foreground():
         unsafe_allow_html=True,
     )
 
+
 _force_fresh_check_on_foreground()
 
 # THEME
 load_theme()
 render_header()
 
+# LOGIN (renders the login form and st.stop()s if not logged in)
 login()
 
 session_id = st.session_state.get("session_id")
@@ -161,14 +163,24 @@ else:
 
 st.sidebar.caption(f"Auto logout after {IDLE_TIMEOUT_MINUTES} minutes of inactivity.")
 
-admin_page_selected = False
+if "show_admin_panel" not in st.session_state:
+    st.session_state.show_admin_panel = False
 
 if st.session_state.role == "Admin":
     st.sidebar.divider()
-    admin_page_selected = st.sidebar.button("🔐 Admin Panel", use_container_width=True)
+    if st.session_state.show_admin_panel:
+        if st.sidebar.button("⬅ Back to Data Analysis", width='stretch'):
+            st.session_state.show_admin_panel = False
+            st.rerun()
+    else:
+        if st.sidebar.button("🔐 Admin Panel", width='stretch'):
+            st.session_state.show_admin_panel = True
+            st.rerun()
+
+admin_page_selected = st.session_state.show_admin_panel
 
 # LOGOUT
-if st.sidebar.button("🚪 Logout", use_container_width=True):
+if st.sidebar.button("🚪 Logout", width='stretch'):
     revoke_session(session_id, reason="user_logout")
     log_event(EVENT_LOGOUT, username=st.session_state.get("username"))
 
@@ -235,9 +247,7 @@ page = st.sidebar.radio(
 
 # PAGE ROUTING
 try:
-    if admin_page_selected:
-        admin_page()
-    elif page == "Dashboard":
+    if page == "Dashboard":
         dashboard_page(st.session_state.working_df)
     elif page == "Chart Builder":
         chart_page(st.session_state.working_df)

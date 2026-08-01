@@ -14,7 +14,6 @@ from security.session_manager import create_session
 from security.validators import sanitize_text_input
 from config.security_settings import LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_SECONDS
 
-
 def _detect_device(user_agent: str) -> str:
     ua = user_agent or ""
     if "Windows" in ua:
@@ -47,7 +46,6 @@ def _client_ip() -> str:
         pass
     return "unknown"
 
-
 def login():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -71,7 +69,6 @@ def login():
             """,
             unsafe_allow_html=True,
         )
-
         logout_notice = st.session_state.pop("logout_notice", None)
         if logout_notice:
             level, message = logout_notice
@@ -92,12 +89,14 @@ def login():
             max_chars=128,
         )
 
-        login_btn = st.button("Login", use_container_width=True)
+        login_btn = st.button("Login", width='stretch')
 
         if login_btn:
-            # Server-side sanitization -- never trust the raw client input.
+            # Server-side sanitization
             username = sanitize_text_input(username_raw, max_length=32)
             client_ip = _client_ip()
+
+            # 1. Rate limit the login 
             rl = enforce_rate_limit(
                 "login", client_ip, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_SECONDS
             )
@@ -112,6 +111,7 @@ def login():
                 st.error("Invalid username or password.")
                 st.stop()
 
+            # 2. Per-username lockout check, BEFORE checking the password.
             locked, remaining = is_locked_out(username)
             if locked:
                 minutes = max(remaining // 60, 1)
@@ -126,6 +126,7 @@ def login():
                     details={"ip": client_ip, "remaining_seconds": remaining},
                 )
                 st.stop()
+
             role = verify_credentials(username, password)
 
             if role:
