@@ -1,292 +1,312 @@
-import re
-import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
-from config.security_settings import (
-    AI_INSIGHTS_RATE_LIMIT,
-    AI_INSIGHTS_RATE_WINDOW_SECONDS,
-)
+from config.security_settings import AI_INSIGHTS_RATE_LIMIT, AI_INSIGHTS_RATE_WINDOW_SECONDS
 from security.rate_limiter import enforce_rate_limit
 from security.validators import sanitize_text_input
+from services.bi_service import (
+    auto_parse_dates,
+    build_3d_bar_chart,
+    build_3d_bubble,
+    build_3d_donut,
+    build_3d_line_trend,
+    build_3d_scatter,
+    build_3d_stacked_bar,
+    build_3d_surface,
+    build_3d_target_chart,
+    can_build_3d,
+    clean_numeric_like_columns,
+    detect_column_types,
+)
+from services.oracle_service import (
+    answer_any_question,
+    generate_past_present_future,
+    generate_report,
+)
+from core.agent_widget import render_state, run_agent_sequence
 
 CLEANED_DF_KEYS = [
-    "cleaned_df",
-    "clean_df",
-    "df_cleaned",
-    "cleaned_data",
-    "clean_data",
-    "final_df",
-    "df",
-    "data",
+    "cleaned_df", "clean_df", "df_cleaned", "cleaned_data",
+    "clean_data", "final_df", "df", "data",
 ]
+
+
 def get_cleaned_df(fallback_df):
     for key in CLEANED_DF_KEYS:
         if key in st.session_state:
             candidate = st.session_state[key]
             if isinstance(candidate, pd.DataFrame) and not candidate.empty:
                 return candidate
-
     return fallback_df
-def safe_to_numeric(series, clip_outliers=True, outlier_z=6):
-    bad_tokens = r"(?i)^\s*(inf|-inf|\+inf|infinity|-infinity|nan|none|null|na|n/a)\s*$"
 
-    cleaned = (
-        series.astype(str)
-        .str.replace(r"[₹$,%\s]", "", regex=True)
-    )
-    cleaned = cleaned.mask(cleaned.str.match(bad_tokens, na=False), np.nan)
-    numeric = pd.to_numeric(cleaned, errors="coerce")
-    numeric = numeric.replace([np.inf, -np.inf], np.nan)
-    if clip_outliers and numeric.notna().sum() > 1:
-        mean = numeric.mean()
-        std = numeric.std()
-        if std and std > 0 and np.isfinite(mean) and np.isfinite(std):
-            z_scores = (numeric - mean).abs() / std
-            numeric = numeric.where(z_scores <= outlier_z, np.nan)
-
-    return numeric
-
-def find_matched_column(q, df):
-    """
-    Finds the best matching column for a natural language query.
-    Uses WORD-BOUNDARY regex matching (not plain substring "in" checks),
-    so "age" won't wrongly match inside "average". Longest / most specific
-    column names are checked first.
-    """
-
-    cleaned_cols = []
-    for col in df.columns:
-        clean_col = (
-            col.lower()
-            .replace("_", " ")
-            .replace("-", " ")
-            .strip()
-        )
-        cleaned_cols.append((clean_col, col))
-
-    cleaned_cols.sort(key=lambda x: len(x[0]), reverse=True)
-
-    # 1) Exact whole-phrase match
-    for clean_col, original_col in cleaned_cols:
-        pattern = r"\b" + re.escape(clean_col) + r"\b"
-        if re.search(pattern, q):
-            return original_col
-
-    # 2) Partial whole-word match
-    q_words = set(re.findall(r"\b\w+\b", q))
-    for clean_col, original_col in cleaned_cols:
-        col_words = clean_col.split()
-        if any(word in q_words for word in col_words):
-            return original_col
-
-    return None
 
 def ai_page(df):
+    st.markdown(
+        """
+        <div style="text-align:center; margin-bottom: 0.5rem;">
+            <h1>🔮 AI Insights</h1>
+            <p style="opacity:0.75;">Automatic analysis, forecasting, and Q&A for any kind of dataset — runs fully locally, no API key needed.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    df = get_cleaned_df(df)
+    working_df = clean_numeric_like_columns(df)
+    working_df = auto_parse_dates(working_df)
+    col_types = detect_column_types(working_df)
+    numeric_cols = [c for c, t in col_types.items() if t == "numeric"]
+    categorical_cols = [c for c, t in col_types.items() if t == "categorical"]
+    date_cols = [c for c, t in col_types.items() if t == "date"]
+
+    if not numeric_cols:
+        st.info("Upload a dataset with at least one numeric column to unlock analysis, forecasts, and Q&A.")
+        return
+
+    with st.expander("⚙️ Settings", expanded=False):
+        selected_metrics = st.multiselect(
+            "Metrics to analyze",
+            numeric_cols,
+            default=numeric_cols[:3],
+        )
+        date_col = st.selectbox(
+            "Time column (for trend & forecasting)",
+            ["(none)"] + date_cols,
+            index=1 if date_cols else 0,
+        )
+        date_col = None if date_col == "(none)" else date_col
+
+    if not selected_metrics:
+        st.warning("Select at least one metric above.")
+        return
+
+    st.divider()
+
+    # PAST / PRESENT / FUTURE
+
+    st.subheader("🕰️ Past · Present · Future")
+
+    for metric in selected_metrics:
+        with st.container(border=True):
+            st.markdown(f"### {metric}")
+            ppf = generate_past_present_future(working_df, metric, date_col)
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("🔵 **PAST**")
+                st.write(ppf["past"])
+            with c2:
+                st.markdown("🟢 **PRESENT**")
+                st.write(ppf["present"])
+            with c3:
+                st.markdown("🟣 **FUTURE**")
+                st.write(ppf["future"])
+
+            if ppf.get("forecast") and ppf["forecast"].get("forecast"):
+                _render_forecast_chart(working_df, date_col, metric, ppf["forecast"])
+
+    st.divider()
+
+    # RECOMMENDATIONS
+
+    st.subheader("🎯 Recommendations")
+    report = generate_report(working_df, selected_metrics, date_col)
+    for rec in report["recommendations"]:
+        if rec["priority"] == "high":
+            st.error(rec["text"])
+        elif rec["priority"] == "opportunity":
+            st.success(rec["text"])
+        elif rec["priority"] == "medium":
+            st.warning(rec["text"])
+        else:
+            st.info(rec["text"])
+
+    st.divider()
+
+    # 3D EXPLORER — auto-appears only when the data actually has the shape
+    # for it (1+ dimension, 2+ metrics), never forced when a 2D chart
+    # would explain the data just as well.
+
+    if can_build_3d(col_types):
+        st.subheader("🧊 3D Explorer")
+        st.caption("Rotate, zoom, and hover on any of these — pick the chart type that fits your question.")
+
+        dim_cols = [c for c, t in col_types.items() if t == "categorical"]
+
+        chart_kind = st.selectbox(
+            "Chart type",
+            ["3D Bar", "3D Stacked Bar", "3D Donut", "3D Scatter", "3D Bubble", "3D Line Trend", "3D Surface", "3D Target vs Current"],
+            key="3d_kind",
+        )
+
+        fig_3d, grouped_3d = None, None
+
+        if chart_kind == "3D Bar":
+            c1, c2, c3 = st.columns(3)
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_bar_dim")
+            metric_h = c2.selectbox("Height", numeric_cols, key="3d_bar_h")
+            spread_opts = ["(none)"] + [c for c in numeric_cols if c != metric_h]
+            spread_choice = c3.selectbox("Spread (Y axis)", spread_opts, key="3d_bar_spread")
+            metric_spread = None if spread_choice == "(none)" else spread_choice
+            fig_3d, grouped_3d = build_3d_bar_chart(working_df, dimension_col, metric_h, metric_spread)
+
+        elif chart_kind == "3D Stacked Bar":
+            c1, c2 = st.columns([1, 2])
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_stack_dim")
+            stack_metrics = c2.multiselect("Metrics to stack", numeric_cols, default=numeric_cols[:2], key="3d_stack_metrics")
+            if len(stack_metrics) >= 1:
+                fig_3d, grouped_3d = build_3d_stacked_bar(working_df, dimension_col, stack_metrics)
+            else:
+                st.warning("Pick at least one metric to stack.")
+
+        elif chart_kind == "3D Donut":
+            c1, c2 = st.columns(2)
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_donut_dim")
+            metric_v = c2.selectbox("Value", numeric_cols, key="3d_donut_metric")
+            fig_3d, grouped_3d = build_3d_donut(working_df, dimension_col, metric_v)
+
+        elif chart_kind == "3D Scatter":
+            c1, c2, c3, c4 = st.columns(4)
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_scatter_dim")
+            metric_x = c2.selectbox("X axis", numeric_cols, key="3d_scatter_x")
+            remaining_y = [c for c in numeric_cols if c != metric_x] or numeric_cols
+            metric_y = c3.selectbox("Y axis", remaining_y, key="3d_scatter_y")
+            z_options = ["(auto: rank)"] + [c for c in numeric_cols if c not in (metric_x, metric_y)]
+            z_choice = c4.selectbox("Z axis", z_options, key="3d_scatter_z")
+            metric_z = None if z_choice == "(auto: rank)" else z_choice
+            fig_3d, grouped_3d = build_3d_scatter(working_df, dimension_col, metric_x, metric_y, metric_z)
+
+        elif chart_kind == "3D Bubble":
+            c1, c2, c3, c4 = st.columns(4)
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_bubble_dim")
+            metric_x = c2.selectbox("X axis", numeric_cols, key="3d_bubble_x")
+            remaining_y = [c for c in numeric_cols if c != metric_x] or numeric_cols
+            metric_y = c3.selectbox("Y axis", remaining_y, key="3d_bubble_y")
+            remaining_size = [c for c in numeric_cols if c not in (metric_x, metric_y)] or numeric_cols
+            metric_size = c4.selectbox("Bubble size", remaining_size, key="3d_bubble_size")
+            fig_3d, grouped_3d = build_3d_bubble(working_df, dimension_col, metric_x, metric_y, metric_size)
+
+        elif chart_kind == "3D Line Trend":
+            if not date_col:
+                st.info("Pick a time column in ⚙️ Settings above to unlock 3D Line Trend.")
+            else:
+                c1, c2 = st.columns(2)
+                dimension_col = c1.selectbox("Compare across", dim_cols, key="3d_line_dim")
+                metric_v = c2.selectbox("Metric", numeric_cols, key="3d_line_metric")
+                fig_3d, grouped_3d = build_3d_line_trend(working_df, date_col, dimension_col, metric_v)
+
+        elif chart_kind == "3D Surface":
+            if not date_col:
+                st.info("Pick a time column in ⚙️ Settings above to unlock 3D Surface.")
+            else:
+                c1, c2 = st.columns(2)
+                dimension_col = c1.selectbox("Category axis", dim_cols, key="3d_surf_dim")
+                metric_v = c2.selectbox("Metric", numeric_cols, key="3d_surf_metric")
+                fig_3d, grouped_3d = build_3d_surface(working_df, date_col, dimension_col, metric_v)
+
+        elif chart_kind == "3D Target vs Current":
+            c1, c2, c3 = st.columns(3)
+            dimension_col = c1.selectbox("Dimension", dim_cols, key="3d_target_dim")
+            metric_v = c2.selectbox("Metric", numeric_cols, key="3d_target_metric")
+            target_val = c3.number_input("Target value", value=float(pd.to_numeric(working_df[metric_v], errors="coerce").mean() or 0), key="3d_target_val")
+            fig_3d, grouped_3d = build_3d_target_chart(working_df, dimension_col, metric_v, target_val)
+
+        if fig_3d is not None:
+            st.plotly_chart(fig_3d, width="stretch", key="ai_insights_3d_chart")
+        elif chart_kind not in ("3D Line Trend", "3D Surface") or date_col:
+            st.info("Not enough overlapping data across these columns to build this chart.")
+
+    st.divider()
+
+    # CHAT-STYLE Q&A 
 
     st.subheader("💬 Ask Your Data")
-    df = get_cleaned_df(df)
-
-    st.info("""
-    Examples:
-    • Highest Sales
-    • Lowest Profit
-    • Average Revenue
-    • Total Amount
-    • Count Product
-    • Missing Values
-    • Total Rows
-    • Total Columns
-    • Top Category
-    """)
-
-    question_raw = st.text_input(
-        "Ask anything about your cleaned dataset"
+    st.caption(
+        'Try: "which city has highest sales", "why is profit declining", '
+        '"forecast revenue", "current sales target 2000", "what should I improve"'
     )
 
-    if not question_raw:
-        return
-    username = st.session_state.get("username", "anonymous")
-    rl = enforce_rate_limit(
-        "ai_insights",
-        username,
-        AI_INSIGHTS_RATE_LIMIT,
-        AI_INSIGHTS_RATE_WINDOW_SECONDS,
-    )
+    if "ai_chat_history" not in st.session_state:
+        st.session_state.ai_chat_history = []
 
-    if not rl.allowed:
-        st.error(
-            f"🚦 Rate limit exceeded: max {AI_INSIGHTS_RATE_LIMIT} AI Insights "
-            f"requests per {AI_INSIGHTS_RATE_WINDOW_SECONDS} seconds. "
-            f"Please retry in {rl.retry_after_seconds} second(s)."
-        )
-        return
+    for role, message in st.session_state.ai_chat_history:
+        with st.chat_message(role):
+            st.markdown(message)
 
-    st.caption(f"AI Insights requests remaining this minute: {rl.remaining}")
+    question_raw = st.chat_input("Ask about your data...")
 
-    question = sanitize_text_input(question_raw, max_length=300)
+    if question_raw:
+        username = st.session_state.get("username", "anonymous")
+        rl = enforce_rate_limit("ai_insights", username, AI_INSIGHTS_RATE_LIMIT, AI_INSIGHTS_RATE_WINDOW_SECONDS)
 
-    q = question.lower()
-
-    matched_col = find_matched_column(q, df)
-
-    # Highest
-
-    if "highest" in q or "maximum" in q:
-
-        if matched_col:
-
-            numeric_col = safe_to_numeric(df[matched_col])
-            value = numeric_col.max()
-            row = df[numeric_col == value]
-
-            st.success(f"Highest {matched_col}: {value}")
-            st.dataframe(row, use_container_width=True)
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Lowest
-
-    if "lowest" in q or "minimum" in q:
-
-        if matched_col:
-
-            numeric_col = safe_to_numeric(df[matched_col])
-            value = numeric_col.min()
-            row = df[numeric_col == value]
-
-            st.success(f"Lowest {matched_col}: {value}")
-            st.dataframe(row, use_container_width=True)
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Average
-
-    if "average" in q or "mean" in q:
-
-        if matched_col:
-
-            value = safe_to_numeric(df[matched_col]).mean()
-
-            if pd.isna(value) or not np.isfinite(value):
-                st.warning(
-                    f"'{matched_col}' has no valid numeric values to average."
-                )
-                with st.expander("🔍 Debug: raw values in this column"):
-                    st.write(df[matched_col].head(20))
-                    st.write("Dtype:", df[matched_col].dtype)
-            else:
-                st.success(f"Average {matched_col}: {value:.2f}")
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Median
-
-    if "median" in q:
-
-        if matched_col:
-
-            value = safe_to_numeric(df[matched_col]).median()
-
-            if pd.isna(value):
-                st.warning(
-                    f"'{matched_col}' has no valid numeric values for median."
-                )
-            else:
-                st.success(f"Median {matched_col}: {value:.2f}")
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Sum / Total
-
-    if "sum" in q or "total" in q:
-
-        if matched_col:
-
-            value = safe_to_numeric(df[matched_col]).sum()
-            st.success(f"Total {matched_col}: {value:,.2f}")
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Count
-
-    if "count" in q:
-
-        if matched_col:
-
-            value = df[matched_col].count()
-            st.success(f"Count of {matched_col}: {value}")
-        else:
-            st.warning("Couldn't find a matching column for your question.")
-
-        return
-
-    # Top Category
-
-    if "top" in q:
-
-        if matched_col:
-
-            value = (
-                df[matched_col]
-                .astype(str)
-                .value_counts()
-                .idxmax()
+        if not rl.allowed:
+            warn_placeholder = st.empty()
+            render_state(
+                warn_placeholder,
+                "warning",
+                "⚠️ Rate Limit",
+                f"Max {AI_INSIGHTS_RATE_LIMIT} questions per {AI_INSIGHTS_RATE_WINDOW_SECONDS}s. "
+                f"Retry in {rl.retry_after_seconds}s.",
             )
-            st.success(f"Top {matched_col}: {value}")
         else:
-            st.warning("Couldn't find a matching column for your question.")
+            question = sanitize_text_input(question_raw, max_length=300)
 
+            st.session_state.ai_chat_history.append(("user", question))
+            with st.chat_message("user"):
+                st.markdown(question)
+
+            with st.chat_message("assistant"):
+                agent_placeholder = st.empty()
+                run_agent_sequence(agent_placeholder)
+                answer = answer_any_question(working_df, question, col_types, numeric_cols, date_col)
+                agent_placeholder.empty()
+                st.markdown(answer)
+
+            st.session_state.ai_chat_history.append(("assistant", answer))
+
+    if st.session_state.ai_chat_history:
+        if st.button("🗑️ Clear conversation"):
+            st.session_state.ai_chat_history = []
+            st.rerun()
+
+
+def _render_forecast_chart(df: pd.DataFrame, date_col: str, metric: str, forecast: dict):
+    if not date_col or date_col not in df.columns:
         return
 
-    # Missing Values
-
-    if "missing" in q or "null" in q:
-
-        missing = df.isna().sum().reset_index()
-        missing.columns = ["Column", "Missing Values"]
-        st.dataframe(missing, use_container_width=True)
-
+    working = df[[date_col, metric]].dropna().sort_values(date_col)
+    if working.empty:
         return
 
-    # Rows
-
-    if "rows" in q:
-
-        st.success(f"Total Rows: {len(df)}")
-        return
-
-    # Columns
-
-    if "columns" in q:
-
-        st.success(f"Total Columns: {len(df.columns)}")
-        return
-
-    # Dataset Shape
-
-    if "shape" in q:
-
-        st.success(f"Dataset Shape: {df.shape}")
-        return
-
-    # Describe Dataset
-
-    if "summary" in q or "describe" in q:
-
-        st.dataframe(df.describe(include="all"), use_container_width=True)
-        return
-
-    st.warning(
-        "Query not understood. Try: Highest Sales, Average Revenue, Total Amount, Missing Values, Dataset Summary"
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=working[date_col],
+            y=pd.to_numeric(working[metric], errors="coerce"),
+            mode="lines+markers",
+            name="Historical",
+            line=dict(color="#2563EB"),
+        )
     )
+
+    if forecast.get("forecast"):
+        last_x = working[date_col].iloc[-1]
+        last_y = pd.to_numeric(working[metric], errors="coerce").iloc[-1]
+        future_x = [last_x] + list(forecast["future_labels"])
+        future_y = [last_y] + forecast["forecast"]
+        fig.add_trace(
+            go.Scatter(
+                x=future_x, y=future_y, mode="lines+markers", name="Forecast",
+                line=dict(color="#f59e0b", dash="dash"),
+            )
+        )
+
+    fig.update_layout(
+        height=280, template="plotly_dark",
+        margin=dict(l=10, r=10, t=20, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    )
+    st.plotly_chart(fig, width="stretch", key=f"forecast_{metric}")

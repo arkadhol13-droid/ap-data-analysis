@@ -6,7 +6,6 @@ from config.security_settings import IDLE_TIMEOUT_MINUTES, SESSION_AUTOREFRESH_M
 
 from auth.login import login
 from core.file_loader import load_file
-
 from app_pages.dashboard import dashboard_page
 from app_pages.chart_builder import chart_page
 from app_pages.pivot_builder import pivot_page
@@ -240,7 +239,7 @@ page = st.sidebar.radio(
         "Chart Builder",
         "Pivot Builder",
         "Data Cleaning",
-        "AI Insights",
+        "🔮 AI Insights",
         "SQL Studio",
     ],
 )
@@ -255,7 +254,7 @@ try:
         pivot_page(st.session_state.working_df)
     elif page == "Data Cleaning":
         cleaning_page(st.session_state.working_df)
-    elif page == "AI Insights":
+    elif page == "🔮 AI Insights":
         ai_page(st.session_state.working_df)
     elif page == "SQL Studio":
         sql_page(st.session_state.working_df)
