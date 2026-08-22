@@ -1,169 +1,198 @@
-/* =========================
-   APP
-========================= */
+/* =========================================================================
+   DESIGN TOKENS
+========================================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Fraunces:ital,wght@1,600&display=swap');
 
-.stApp{
-    background:linear-gradient(
-        135deg,
-        #0f172a 0%,
-        #1e293b 50%,
-        #334155 100%
-    );
+:root{
+    --void: #05060b;
+    --panel: #10121c;
+    --panel-2: #161a29;
+    --border: rgba(255,255,255,0.09);
+    --border-strong: rgba(124,58,237,0.35);
+
+    --violet: #7c3aed;
+    --violet-soft: #a78bfa;
+    --cyan: #38bdf8;
+    --amber: #f2c675;
+
+    --ink: #ece9f7;
+    --ink-dim: #8b8fa8;
+    --ink-faint: #565b73;
+
+    --success: #34d399;
+    --danger: #f87171;
+
+    --radius: 16px;
+    --radius-sm: 10px;
 }
-
+/* =========================================================================
+   APP BACKGROUND
+========================================================================= */
+.stApp{
+    background:
+        radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(124,58,237,0.10) 0%, transparent 55%),
+        radial-gradient(ellipse 900px 500px at 90% 10%, rgba(56,189,248,0.07) 0%, transparent 50%),
+        var(--void);
+}
 .block-container{
-    max-width:1200px;
+    max-width:1220px;
     margin:auto;
     padding-top:1.5rem !important;
     padding-bottom:2rem;
 }
-
-
-/* =========================
-   TITLES
-========================= */
-
+/* =========================================================================
+   TYPOGRAPHY
+========================================================================= */
+html, body, [class*="css"]{
+    font-family:'Space Grotesk', sans-serif;
+}
+h1, h2, h3{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:600;
+    color:var(--ink) !important;
+    letter-spacing:-0.01em;
+}
+h4, h5, h6{
+    color:var(--ink) !important;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+}
+label, p, span, .stMarkdown{
+    color:var(--ink) !important;
+}
 .main-title{
     text-align:center;
-    font-size:32px;
-    font-weight:700;
-    color:white;
-    margin-bottom:5px;
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-size:34px;
+    font-weight:600;
+    background:linear-gradient(90deg, var(--ink) 30%, var(--violet-soft) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent !important;
+    margin-bottom:4px;
     padding-top:10px;
 }
-
 .sub-title{
     text-align:center;
-    font-size:14px;
-    color:#cbd5e1;
-    margin-bottom:8px;
+    font-size:13px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim) !important;
+    margin-bottom:10px;
 }
-
-
-/* =========================
-   HEADINGS
-========================= */
-
-h1,h2,h3,h4,h5,h6{
-    color:white !important;
+/* =========================================================================
+   SIGNATURE ELEMENT
+========================================================================= */
+hr{
+    border:none !important;
+    height:14px !important;
+    margin:22px 0 !important;
+    background:
+        radial-gradient(circle, var(--violet-soft) 0%, transparent 70%) 15% 50% / 6px 6px no-repeat,
+        radial-gradient(circle, var(--cyan) 0%, transparent 70%) 50% 50% / 5px 5px no-repeat,
+        radial-gradient(circle, var(--violet-soft) 0%, transparent 70%) 85% 50% / 6px 6px no-repeat,
+        linear-gradient(90deg, transparent, var(--border) 15%, var(--border) 85%, transparent) 50% 50% / 100% 1px no-repeat;
+    opacity:0.9;
 }
-
-
-/* =========================
-   TEXT
-========================= */
-
-label,p,span{
-    color:white !important;
-}
-
-
-/* =========================
+/* =========================================================================
    SIDEBAR
-========================= */
-
+========================================================================= */
 [data-testid="stSidebar"]{
-    background:#020617;
+    background:linear-gradient(180deg, #030409 0%, var(--void) 100%);
+    border-right:1px solid var(--border);
 }
-
 [data-testid="stSidebar"] *{
-    color:white !important;
+    color:var(--ink) !important;
 }
-
-
-/* =========================
-   INPUTS (general - used everywhere including dashboard)
-========================= */
-
-div[data-baseweb="input"],
-div[data-baseweb="base-input"],
-[data-baseweb="select"]{
-    max-width:100% !important;
+/* =========================================================================
+   CARDS — glass-panel treatment, used by stat-card and containers
+========================================================================= */
+.stat-card{
+    background:linear-gradient(160deg, var(--panel-2) 0%, var(--panel) 100%);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px;
+    text-align:center;
+    min-height:120px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    transition:border-color 0.2s ease, transform 0.2s ease;
 }
-
-input{
-    color:black !important;
-    border-radius:10px !important;
+.stat-card:hover{
+    border-color:var(--border-strong);
+    transform:translateY(-2px);
 }
-
-
-/* =========================
-   LOGIN PAGE CARD
-   (isolated using .login-marker - ONLY this specific column gets styled,
-    dashboard columns are never touched)
-========================= */
-
+.stat-card h3{
+    color:var(--ink-dim) !important;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    letter-spacing:0.04em;
+    margin-bottom:10px;
+    font-weight:600;
+}
+.stat-card h2{
+    color:var(--ink) !important;
+    font-family:'Space Grotesk', sans-serif;
+    font-variant-numeric:tabular-nums;
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]{
+    border-color:var(--border) !important;
+    border-radius:var(--radius) !important;
+    background:rgba(16,18,28,0.55) !important;
+    backdrop-filter:blur(10px);
+}
+/* =========================================================================
+   LOGIN CARD
+========================================================================= */
 div[data-testid="stHorizontalBlock"]:has(.login-marker) > div:nth-child(2){
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.15);
-    border-radius:18px;
-    padding:22px 22px 16px 22px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:24px 22px 18px 22px;
     box-shadow:
-        0px 12px 35px rgba(0,0,0,0.4),
-        0 0 0 1px rgba(255,255,255,0.03);
-    backdrop-filter:blur(15px);
+        0 20px 50px rgba(0,0,0,0.5),
+        0 0 60px rgba(124,58,237,0.08);
+    backdrop-filter:blur(18px);
     margin-top:10px;
     max-width:420px;
     margin-left:auto;
     margin-right:auto;
 }
-
-.login-header{
-    text-align:center;
-    margin-bottom:14px;
-}
-
-.login-icon{
-    font-size:26px;
-    margin-bottom:4px;
-}
-
+.login-header{ text-align:center; margin-bottom:14px; }
+.login-icon{ font-size:26px; margin-bottom:4px; }
 .login-header h1{
-    color:white !important;
-    font-size:18px;
-    font-weight:700;
+    font-family:'Fraunces', serif !important;
+    font-style:italic;
+    color:var(--ink) !important;
+    font-size:19px;
+    font-weight:600;
     margin:0 0 3px 0;
 }
-
-.login-header p{
-    color:#94a3b8 !important;
-    font-size:12px;
-    margin:0;
-}
-
-.login-footer{
-    text-align:center;
-    color:#64748b !important;
-    font-size:11px;
-    margin-top:12px;
-}
-
-/* Username / Password fields inside login card */
+.login-header p{ color:var(--ink-dim) !important; font-size:12px; margin:0; }
+.login-footer{ text-align:center; color:var(--ink-faint) !important; font-size:11px; margin-top:12px; }
 div[data-testid="stHorizontalBlock"]:has(.login-marker) .stTextInput input{
     background:#ffffff !important;
-    color:#0f172a !important;
+    color:var(--void) !important;
     height:40px !important;
     border-radius:20px !important;
-    border:1px solid rgba(255,255,255,0.15) !important;
+    border:1px solid var(--border) !important;
     padding:0 16px !important;
     font-size:13px !important;
     margin-bottom:8px;
 }
-
-div[data-testid="stHorizontalBlock"]:has(.login-marker) .stTextInput input::placeholder{
-    color:#94a3b8 !important;
-}
+div[data-testid="stHorizontalBlock"]:has(.login-marker) .stTextInput input::placeholder{ color:#94a3b8 !important; }
 
 div[data-testid="stHorizontalBlock"]:has(.login-marker) .stTextInput input:focus{
-    border:1px solid #2563eb !important;
-    box-shadow:0 0 0 3px rgba(37,99,235,0.25) !important;
+    border:1px solid var(--violet) !important;
+    box-shadow:0 0 0 3px rgba(124,58,237,0.25) !important;
 }
+div[data-testid="stHorizontalBlock"]:has(.login-marker) [data-testid="stTextInput"] svg{ fill:var(--void) !important; }
 
-div[data-testid="stHorizontalBlock"]:has(.login-marker) [data-testid="stTextInput"] svg{
-    fill:#0f172a !important;
-}
-
-/* Login button - rounded pill style */
 div[data-testid="stHorizontalBlock"]:has(.login-marker) .stButton > button{
     border-radius:20px !important;
     height:38px !important;
@@ -171,134 +200,92 @@ div[data-testid="stHorizontalBlock"]:has(.login-marker) .stButton > button{
     font-size:13px !important;
     margin-top:4px;
 }
-
-
-/* =========================
-   FILE UPLOADER
-========================= */
-
+/* =========================================================================
+   INPUTS / SELECT / FILE UPLOADER
+========================================================================= */
+div[data-baseweb="input"], div[data-baseweb="base-input"], [data-baseweb="select"]{
+    max-width:100% !important;
+}
+input{ color:var(--void) !important; border-radius:var(--radius-sm) !important; }
 [data-testid="stFileUploader"]{
-    background:white !important;
-    border-radius:12px !important;
+    background:var(--panel) !important;
+    border:1px dashed var(--border-strong) !important;
+    border-radius:var(--radius) !important;
     padding:12px !important;
 }
-
-[data-testid="stFileUploader"] *{
-    color:black !important;
-}
+[data-testid="stFileUploader"] section{ background:transparent !important; }
+[data-testid="stFileUploader"] *{ color:var(--ink) !important; }
 
 [data-testid="stFileUploader"] button{
-    background:#2563eb !important;
+    background:var(--violet) !important;
     color:white !important;
     border:none !important;
     border-radius:8px !important;
 }
-
-
-/* =========================
+/* =========================================================================
    BUTTONS
-========================= */
-
+========================================================================= */
 .stButton > button{
-    background:#2563eb !important;
+    background:var(--violet) !important;
     color:white !important;
     border:none !important;
-    border-radius:10px !important;
-
+    border-radius:var(--radius-sm) !important;
     height:42px !important;
     min-height:42px !important;
-
-    padding:0px 20px !important;
-
+    padding:0 20px !important;
     font-size:14px !important;
     font-weight:600 !important;
+    transition:background 0.15s ease, box-shadow 0.15s ease;
 }
-
 .stButton > button:hover{
-    background:#1d4ed8 !important;
+    background:#6d28d9 !important;
+    box-shadow:0 0 0 3px rgba(124,58,237,0.25) !important;
 }
-
-
-/* =========================
-   DOWNLOAD BUTTON
-========================= */
-
 .stDownloadButton > button{
-    background:#16a34a !important;
-    color:white !important;
+    background:var(--success) !important;
+    color:#052e1c !important;
     border:none !important;
-    border-radius:10px !important;
-
+    border-radius:var(--radius-sm) !important;
     height:42px !important;
     min-height:42px !important;
-
-    padding:0px 20px !important;
-
+    padding:0 20px !important;
     font-size:14px !important;
-    font-weight:600 !important;
+    font-weight:700 !important;
 }
-
-.stDownloadButton > button:hover{
-    background:#15803d !important;
-}
-
-/* =========================
-   DATAFRAME
-========================= */
-
+.stDownloadButton > button:hover{ background:#22c893 !important; }
+/* =========================================================================
+   DATAFRAME / TABLES
+========================================================================= */
 div[data-testid="stDataFrame"]{
-    background:white;
-    border-radius:12px;
-    padding:8px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:6px;
 }
-
-/* =========================
+/* =========================================================================
    ALERTS
-========================= */
-
+========================================================================= */
 [data-testid="stAlert"]{
-    border-radius:10px !important;
+    border-radius:var(--radius-sm) !important;
+    border:1px solid var(--border) !important;
 }
-
-/* =========================
-   SPACING
-========================= */
-
-hr{
-    margin-top:10px !important;
-    margin-bottom:10px !important;
+/* =========================================================================
+   TABS
+========================================================================= */
+.stTabs [data-baseweb="tab-list"]{
+    gap:4px;
+    border-bottom:1px solid var(--border);
 }
-
-section.main > div{
-    padding-top:0.5rem !important;
-}
-
-header[data-testid="stHeader"]{
-    height:60px !important;
-}
-
-/* DASHBOARD CARDS */
-
-.stat-card{
-    background:#1e293b;
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:16px;
-    padding:20px;
-    text-align:center;
-    min-height:120px;
-    box-shadow:0 4px 15px rgba(0,0,0,0.25);
-}
-
-.stat-card h3{
-    color:#cbd5e1 !important;
-    font-size:14px;
-    margin-bottom:10px;
+.stTabs [data-baseweb="tab"]{
+    color:var(--ink-dim) !important;
     font-weight:600;
 }
-
-.stat-card h2{
-    color:white !important;
-    font-size:30px;
-    font-weight:800;
-    margin:0;
+.stTabs [aria-selected="true"]{
+    color:var(--violet-soft) !important;
+    border-bottom:2px solid var(--violet) !important;
 }
+/* =========================================================================
+   SPACING
+========================================================================= */
+section.main > div{ padding-top:0.5rem !important; }
+header[data-testid="stHeader"]{ height:60px !important; background:transparent !important; }

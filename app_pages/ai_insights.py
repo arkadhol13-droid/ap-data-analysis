@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from config.security_settings import AI_INSIGHTS_RATE_LIMIT, AI_INSIGHTS_RATE_WINDOW_SECONDS
 from security.rate_limiter import enforce_rate_limit
 from security.validators import sanitize_text_input
@@ -25,14 +24,12 @@ from services.oracle_service import (
     generate_past_present_future,
     generate_report,
 )
+from services.business_insights import detect_business_problems, format_finding_markdown
 from core.agent_widget import render_state, run_agent_sequence
-
 CLEANED_DF_KEYS = [
     "cleaned_df", "clean_df", "df_cleaned", "cleaned_data",
     "clean_data", "final_df", "df", "data",
 ]
-
-
 def get_cleaned_df(fallback_df):
     for key in CLEANED_DF_KEYS:
         if key in st.session_state:
@@ -40,6 +37,20 @@ def get_cleaned_df(fallback_df):
             if isinstance(candidate, pd.DataFrame) and not candidate.empty:
                 return candidate
     return fallback_df
+
+@st.cache_data(show_spinner=False, ttl=600)
+def _cached_detect_business_problems(df, col_types, date_col, metrics):
+    return detect_business_problems(df, col_types, date_col, metrics=metrics)
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def _cached_past_present_future(df, metric, date_col):
+    return generate_past_present_future(df, metric, date_col)
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def _cached_report(df, metrics, date_col):
+    return generate_report(df, metrics, date_col)
 
 
 def ai_page(df):
@@ -81,17 +92,34 @@ def ai_page(df):
     if not selected_metrics:
         st.warning("Select at least one metric above.")
         return
+    st.divider()
+    # BUSINESS HEALTH CHECK
+    st.subheader("Business Health Check")
+
+    with st.spinner("Scanning for problems, opportunities, and their root causes..."):
+        findings = _cached_detect_business_problems(working_df, col_types, date_col, tuple(selected_metrics))
+
+    if not findings:
+        st.success("✅ No significant issues or shifts detected in the selected metrics — things look broadly stable.")
+    else:
+        high_findings = [f for f in findings if f["priority"] == "high"]
+        if high_findings:
+            top = high_findings[0]
+            focus = top["drill_path"][-1]["category"] if top["drill_path"] else top["metric"]
+            st.error(f"**If you can fix only one thing first:** focus on **{focus}** — it's driving the largest measurable {'decline' if top['is_decline'] else 'shift'} in **{top['metric']}**.")
+
+        for finding in findings:
+            with st.container(border=True):
+                st.markdown(format_finding_markdown(finding))
 
     st.divider()
-
     # PAST / PRESENT / FUTURE
-
     st.subheader("🕰️ Past · Present · Future")
 
     for metric in selected_metrics:
         with st.container(border=True):
             st.markdown(f"### {metric}")
-            ppf = generate_past_present_future(working_df, metric, date_col)
+            ppf = _cached_past_present_future(working_df, metric, date_col)
 
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -108,11 +136,9 @@ def ai_page(df):
                 _render_forecast_chart(working_df, date_col, metric, ppf["forecast"])
 
     st.divider()
-
     # RECOMMENDATIONS
-
     st.subheader("🎯 Recommendations")
-    report = generate_report(working_df, selected_metrics, date_col)
+    report = _cached_report(working_df, tuple(selected_metrics), date_col)
     for rec in report["recommendations"]:
         if rec["priority"] == "high":
             st.error(rec["text"])
@@ -124,11 +150,7 @@ def ai_page(df):
             st.info(rec["text"])
 
     st.divider()
-
-    # 3D EXPLORER — auto-appears only when the data actually has the shape
-    # for it (1+ dimension, 2+ metrics), never forced when a 2D chart
-    # would explain the data just as well.
-
+    # 3D EXPLORER 
     if can_build_3d(col_types):
         st.subheader("🧊 3D Explorer")
         st.caption("Rotate, zoom, and hover on any of these — pick the chart type that fits your question.")
@@ -219,9 +241,7 @@ def ai_page(df):
             st.info("Not enough overlapping data across these columns to build this chart.")
 
     st.divider()
-
     # CHAT-STYLE Q&A 
-
     st.subheader("💬 Ask Your Data")
     st.caption(
         'Try: "which city has highest sales", "why is profit declining", '
@@ -270,8 +290,6 @@ def ai_page(df):
         if st.button("🗑️ Clear conversation"):
             st.session_state.ai_chat_history = []
             st.rerun()
-
-
 def _render_forecast_chart(df: pd.DataFrame, date_col: str, metric: str, forecast: dict):
     if not date_col or date_col not in df.columns:
         return

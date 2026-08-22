@@ -1,6 +1,7 @@
 
 import numpy as np
 import pandas as pd
+import streamlit as st
 
 AGG_FUNCS = {
     "Sum": "sum",
@@ -10,9 +11,8 @@ AGG_FUNCS = {
     "Min": "min",
 }
 
-MAX_CATEGORICAL_UNIQUE = 200  # above this, a column is treated as free text, not a filterable category
-
-
+MAX_CATEGORICAL_UNIQUE = 200 
+@st.cache_data(show_spinner=False, ttl=600)
 def clean_numeric_like_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Real-world data from any sector often has numbers formatted as text:
@@ -22,6 +22,14 @@ def clean_numeric_like_columns(df: pd.DataFrame) -> pd.DataFrame:
     numeric once symbols/commas are stripped, converts the whole column
     to numeric. Columns that are genuinely text (names, categories) are
     left untouched because they won't pass the "mostly numeric" check.
+
+    Cached: every page (Dashboard, AI Insights, ...) calls this on the
+    same uploaded dataframe. Without caching, switching between pages
+    re-scanned every text column from scratch on every single
+    navigation click -- this is the main thing that was making page
+    switches feel laggy. Streamlit's cache keys on the dataframe's
+    content, so it only re-runs when the actual data changes (e.g. a
+    new file is uploaded), not on every rerun.
     """
     df = df.copy()
     bad_tokens = r"(?i)^\s*(inf|-inf|\+inf|infinity|-infinity|nan|none|null|na|n/a|-)\s*$"
@@ -41,12 +49,13 @@ def clean_numeric_like_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
+@st.cache_data(show_spinner=False, ttl=600)
 def detect_column_types(df: pd.DataFrame) -> dict:
     """
     Classifies every column as 'date', 'numeric', or 'categorical' so the
     filter panel and aggregation controls can offer the right widget for
     each one, without the user having to specify types manually.
+    Cached for the same reason as clean_numeric_like_columns above.
     """
     types = {}
     for col in df.columns:
@@ -58,10 +67,11 @@ def detect_column_types(df: pd.DataFrame) -> dict:
         elif series.nunique(dropna=True) <= MAX_CATEGORICAL_UNIQUE:
             types[col] = "categorical"
         else:
-            types[col] = "text"  # too high-cardinality to filter/group usefully
+            types[col] = "text"  
     return types
 
 
+@st.cache_data(show_spinner=False, ttl=600)
 def auto_parse_dates(df: pd.DataFrame, sample_size: int = 200) -> pd.DataFrame:
     """
     Attempts to auto-detect object columns that actually contain dates
@@ -69,15 +79,24 @@ def auto_parse_dates(df: pd.DataFrame, sample_size: int = 200) -> pd.DataFrame:
     panel can offer a date-range slicer instead of treating them as plain
     categories. Only converts a column if the large majority of a sample
     parses successfully, to avoid false positives on genuinely text data.
+    Cached for the same reason as clean_numeric_like_columns above.
     """
     df = df.copy()
     for col in df.select_dtypes(include="object").columns:
         sample = df[col].dropna().head(sample_size)
         if sample.empty:
             continue
-        parsed_sample = pd.to_datetime(sample, errors="coerce")
+        try:
+            parsed_sample = pd.to_datetime(sample, errors="coerce", format="mixed")
+        except (TypeError, ValueError):
+            # Older pandas versions don't support format="mixed" -- fall
+            # back to the slower per-element inference.
+            parsed_sample = pd.to_datetime(sample, errors="coerce")
         if parsed_sample.notna().mean() >= 0.85:
-            df[col] = pd.to_datetime(df[col], errors="coerce")
+            try:
+                df[col] = pd.to_datetime(df[col], errors="coerce", format="mixed")
+            except (TypeError, ValueError):
+                df[col] = pd.to_datetime(df[col], errors="coerce")
     return df
 
 
@@ -98,7 +117,6 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
         elif isinstance(value, list) and len(value) > 0:
             filtered = filtered[filtered[col].isin(value)]
     return filtered
-
 
 def aggregate(df: pd.DataFrame, group_by: str, measure: str, agg_label: str) -> pd.DataFrame:
     """
@@ -360,9 +378,6 @@ def build_3d_bar_chart(df: pd.DataFrame, dimension_col: str, metric_height: str,
         if metric_spread:
             text += f"<br>{metric_spread}: {row[metric_spread]:,.2f}"
         hover_text.append(text)
-
-    # Invisible marker layer on top of each bar just to carry rich hover
-    # tooltips -- Mesh3d itself doesn't support this cleanly per-bar.
     hover_layer = go.Scatter3d(
         x=hover_x, y=hover_y, z=hover_z,
         mode="markers",
@@ -446,8 +461,6 @@ def build_3d_stacked_bar(df: pd.DataFrame, dimension_col: str, metric_cols: list
         hovertext=hover_text, hoverinfo="text", showlegend=False,
     )
 
-    # legend proxies -- one per metric, shown as flat 2D-style markers so
-    # the color -> metric mapping is readable without adding real geometry.
     legend_traces = [
         go.Scatter3d(
             x=[None], y=[None], z=[None], mode="markers",

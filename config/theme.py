@@ -46,11 +46,12 @@ def render_footer():
 
         <div style="
             text-align:center;
-            color:#cbd5e1;
+            color:#8b8fa8;
             padding:10px;
             font-size:14px;
+            font-family:'Space Grotesk', sans-serif;
         ">
-            © 2025 A|> Analytics Platform |
+            © 2026 A|> Analytics Platform |
             Built with Streamlit 🚀
         </div>
         """,
@@ -63,9 +64,11 @@ def render_page_title(title):
     st.markdown(
         f"""
         <h2 style="
-            color:white;
-            border-left:5px solid #2563eb;
-            padding-left:10px;
+            font-family:'Fraunces', serif;
+            font-style:italic;
+            color:#ece9f7;
+            border-left:3px solid #7c3aed;
+            padding-left:14px;
             margin-bottom:20px;
         ">
             {title}
